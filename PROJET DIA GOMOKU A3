@@ -1,100 +1,106 @@
 import numpy as np
+import time
 
-class Board:
+class Plateau:
     def __init__(self):
-        self.size = 15
-        self.board = np.full((self.size, self.size), '.')  # ca initialise a . au depart
+        self.taille = 15
+        self.plateau = np.full((self.taille, self.taille), '.')
 
-    def display(self):
-        print("   " + "   ".join(map(str, range(self.size))))
-        print("  +" + "---+" * self.size)
-        for i, row in enumerate(self.board):
-            row_display = " | ".join(row)
-            print(f"{chr(65 + i)} | {row_display} |")
-            print("  +" + "---+" * self.size)
+    def afficher(self):
+        print("   " + "   ".join(map(str, range(self.taille))))
+        print("  +" + "---+" * self.taille)
+        for i, ligne in enumerate(self.plateau):
+            affichage_ligne = " | ".join(ligne)
+            print(f"{chr(65 + i)} | {affichage_ligne} |")
+            print("  +" + "---+" * self.taille)
 
-    def Verif(self, x, y):
-        return 0 <= x < self.size and 0 <= y < self.size and self.board[x, y] == '.'
+    def est_coup_valide(self, x, y):
+        return 0 <= x < self.taille and 0 <= y < self.taille and self.plateau[x, y] == '.'
 
-    def Tour(self, x, y, player):
-        if self.Verif(x, y):
-            self.board[x, y] = player
+    def jouer_coup(self, x, y, joueur):
+        if self.est_coup_valide(x, y):
+            self.plateau[x, y] = joueur
             return True
-        elif player == '.':  # retour en arriere au cas ou y a fausse manip
-            self.board[x, y] = '.'
+        elif joueur == '.':
+            self.plateau[x, y] = '.'
             return True
         return False
 
-    def Victoire(self, player):
-        def check_line(line):
-            return ''.join(line).find(player * 5) != -1
+    def verifier_victoire(self, joueur):
+        def verifier_ligne(ligne):
+            return ''.join(ligne).find(joueur * 5) != -1
 
-        for i in range(self.size):
-            if check_line(self.board[i, :]) or check_line(self.board[:, i]):
+        for i in range(self.taille):
+            if verifier_ligne(self.plateau[i, :]) or verifier_ligne(self.plateau[:, i]):
                 return True
 
-        for d in range(-self.size + 1, self.size):
-            if check_line(np.diagonal(self.board, d)) or check_line(np.diagonal(np.fliplr(self.board), d)):
+        for d in range(-self.taille + 1, self.taille):
+            if verifier_ligne(np.diagonal(self.plateau, d)) or verifier_ligne(np.diagonal(np.fliplr(self.plateau), d)):
                 return True
 
         return False
 
-    def is_full(self):
-        return not (self.board == '.').any()
+    def est_plein(self):
+        return not (self.plateau == '.').any()
 
-class GomokuAI:
-    def __init__(self, player):
-        self.player = player
-        self.opponent = 'O' if player == 'X' else 'X'
-        self.nodes_evaluated = 0
+class IA_Gomoku:
+    def __init__(self, joueur):
+        self.joueur = joueur
+        self.adversaire = 'O' if joueur == 'X' else 'X'
+        self.noeuds_evalues = 0
 
-    def evaluate_board(self, board):
+    def evaluer_plateau(self, plateau):
         score = 0
-        for i in range(board.size):
-            for line in [board.board[i, :], board.board[:, i], 
-                         np.diagonal(board.board, i), np.diagonal(np.fliplr(board.board), i)]:
-                line_str = ''.join(line)
-                if self.player * 5 in line_str:
+        for i in range(plateau.taille):
+            for ligne in [plateau.plateau[i, :], plateau.plateau[:, i], 
+                         np.diagonal(plateau.plateau, i), np.diagonal(np.fliplr(plateau.plateau), i)]:
+                chaine_ligne = ''.join(ligne)
+                if self.joueur * 5 in chaine_ligne:
                     return 10000
-                if self.opponent * 5 in line_str:
+                if self.adversaire * 5 in chaine_ligne:
                     return -10000
-                score += line_str.count(self.player * 4) * 1000
-                score += line_str.count(self.player * 3) * 100
-                score += line_str.count(self.player * 2) * 10
-                score -= line_str.count(self.opponent * 4) * 1000
-                score -= line_str.count(self.opponent * 3) * 100
-                score -= line_str.count(self.opponent * 2) * 10
+                score += chaine_ligne.count(self.joueur * 4) * 1000
+                score += chaine_ligne.count(self.joueur * 3) * 100
+                score += chaine_ligne.count(self.joueur * 2) * 10
+                score -= chaine_ligne.count(self.adversaire * 4) * 1000
+                score -= chaine_ligne.count(self.adversaire * 3) * 100
+                score -= chaine_ligne.count(self.adversaire * 2) * 10
+
+                if self.adversaire * 4 in chaine_ligne:
+                    score -= 5000
+                if self.joueur * 4 in chaine_ligne:
+                    score += 5000
         return score
 
-    def generate_moves(self, board):
-        moves = []
+    def generer_coups(self, plateau):
+        coups = []
         directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-        for x in range(board.size):
-            for y in range(board.size):
-                if board.board[x, y] != '.':
+        for x in range(plateau.taille):
+            for y in range(plateau.taille):
+                if plateau.plateau[x, y] != '.':
                     for dx, dy in directions:
                         nx, ny = x + dx, y + dy
-                        if 0 <= nx < board.size and 0 <= ny < board.size and board.board[nx, ny] == '.':
-                            if (nx, ny) not in moves:
-                                moves.append((nx, ny))
-        return moves
+                        if 0 <= nx < plateau.taille and 0 <= ny < plateau.taille and plateau.plateau[nx, ny] == '.':
+                            if (nx, ny) not in coups:
+                                coups.append((nx, ny))
+        return coups
 
-    def minimax(self, board, depth, maximizing_player, alpha, beta):
-        self.nodes_evaluated += 1
-        if board.check_victory(self.player):
-            return 10000 - (3 - depth)
-        if board.check_victory(self.opponent):
-            return -10000 + (3 - depth)
-        if depth == 0 or board.is_full():
-            return self.evaluate_board(board)
+    def minimax(self, plateau, profondeur, maximiser, alpha, beta):
+        self.noeuds_evalues += 1
+        if plateau.verifier_victoire(self.joueur):
+            return 10000 - (3 - profondeur)
+        if plateau.verifier_victoire(self.adversaire):
+            return -10000 + (3 - profondeur)
+        if profondeur == 0 or plateau.est_plein():
+            return self.evaluer_plateau(plateau)
 
-        if maximizing_player:
+        if maximiser:
             max_eval = float('-inf')
-            for move in self.generate_moves(board):
-                x, y = move
-                board.Tour(x, y, self.player)
-                eval = self.minimax(board, depth - 1, False, alpha, beta)
-                board.Tour(x, y, '.')
+            for coup in self.generer_coups(plateau):
+                x, y = coup
+                plateau.jouer_coup(x, y, self.joueur)
+                eval = self.minimax(plateau, profondeur - 1, False, alpha, beta)
+                plateau.jouer_coup(x, y, '.')
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
@@ -102,65 +108,94 @@ class GomokuAI:
             return max_eval
         else:
             min_eval = float('inf')
-            for move in self.generate_moves(board):
-                x, y = move
-                board.Tour(x, y, self.opponent)
-                eval = self.minimax(board, depth - 1, True, alpha, beta)
-                board.Tour(x, y, '.')
+            for coup in self.generer_coups(plateau):
+                x, y = coup
+                plateau.jouer_coup(x, y, self.adversaire)
+                eval = self.minimax(plateau, profondeur - 1, True, alpha, beta)
+                plateau.jouer_coup(x, y, '.')
                 min_eval = min(min_eval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha:
                     break
             return min_eval
 
-    def find_best_move(self, board, depth):
-        best_move = None
-        best_value = float('-inf')
-        for move in self.generate_moves(board):
-            x, y = move
-            board.Tour(x, y, self.player)
-            move_value = self.minimax(board, depth - 1, False, float('-inf'), float('inf'))
-            board.Tour(x, y, '.')
-            if move_value > best_value:
-                best_value = move_value
-                best_move = (x, y)
-        return best_move
+    def trouver_meilleur_coup(self, plateau, profondeur):
+        meilleur_coup = None
+        meilleure_valeur = float('-inf')
+        for coup in self.generer_coups(plateau):
+            x, y = coup
+            plateau.jouer_coup(x, y, self.joueur)
+            valeur_coup = self.minimax(plateau, profondeur - 1, False, float('-inf'), float('inf'))
+            plateau.jouer_coup(x, y, '.')
+            if valeur_coup > meilleure_valeur:
+                meilleure_valeur = valeur_coup
+                meilleur_coup = (x, y)
+        return meilleur_coup
 
 if __name__ == "__main__":
-    board = Board()
-    ai = GomokuAI('X')
+    plateau = Plateau()
+    print("Qui commence ? Tapez '1' pour vous ou '2' pour l'IA :")
+    premier = input()
+    joueur = 'X' if premier == '1' else 'O'
+    ia = IA_Gomoku('X' if joueur == 'O' else 'O')
 
-    print("Gomoku Game!")
-    board.display()
+    print("Jeu de Gomoku!")
+    premier_coup_joueur = premier == '1'
+    premier_coup_ia = premier == '2'
+    plateau.afficher()
 
-    while not board.is_full():
-        move = input("Enter your move (e.g., D7): ").upper()
-        try:
-            x, y = ord(move[0]) - 65, int(move[1:])
-            if not board.Tour(x, y, 'O'):
-                print("Invalid move. Try again.")
+    while not plateau.est_plein():
+        if joueur == 'X':
+            coup = input("Entrez votre coup : ").upper()
+            try:
+                x, y = ord(coup[0]) - 65, int(coup[1:])
+                if premier_coup_joueur:
+                    if (x, y) != (7, 7):
+                        print("Vous devez jouer en H7 pour votre premier coup.")
+                        continue
+                    premier_coup_joueur = False
+                elif not premier_coup_joueur and (abs(x - 7) < 4 and abs(y - 7) < 4):
+                    print("Votre deuxième coup doit être à au moins 4 cases de H7.")
+                    continue
+                if not plateau.jouer_coup(x, y, 'X'):
+                    print("Coup invalide. Essayez à nouveau.")
+                    continue
+            except:
+                print("Entrée invalide. Essayez à nouveau.")
                 continue
-        except:
-            print("Invalid input. Try again.")
-            continue
 
-        board.display()
-        if board.Victoire('O'):
-            print("You win!")
-            break
+            plateau.afficher()
+            if plateau.verifier_victoire('X'):
+                print("Vous gagnez!")
+                break
 
-        print("AI is thinking...")
-        ai_move = ai.find_best_move(board, depth=3)
-        if ai_move:
-            board.Tour(ai_move[0], ai_move[1], 'X')
-            print(f"AI plays: {chr(ai_move[0] + 65)}{ai_move[1]}")
+            joueur = 'O'
+
         else:
-            print("Draw!")
-            break
+            print("L'IA réfléchit...")
+            debut = time.time()
+            if premier_coup_ia:
+                plateau.jouer_coup(7, 7, 'X')
+                print("L'IA joue : H7")
+                premier_coup_ia = False
+            else:
+                coup_ia = ia.trouver_meilleur_coup(plateau, profondeur=3)
+                fin = time.time()
+                temps_reflexion = round(fin - debut, 2)
+                print(f"Temps de réflexion de l'IA : {temps_reflexion} secondes")
 
-        board.display()
-        if board.Victoire('X'):
-            print("AI wins!")
-            break
+                if coup_ia:
+                    plateau.jouer_coup(coup_ia[0], coup_ia[1], 'O')
+                    print(f"L'IA joue : {chr(coup_ia[0] + 65)}{coup_ia[1]}")
+                else:
+                    print("Match nul!")
+                    break
 
-    print(f"AI evaluated {ai.nodes_evaluated} nodes.")
+            plateau.afficher()
+            if plateau.verifier_victoire('O'):
+                print("L'IA gagne!")
+                break
+
+            joueur = 'X'
+
+    print(f"L'IA a évalué {ia.noeuds_evalues} noeuds.")

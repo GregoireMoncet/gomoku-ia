@@ -134,14 +134,21 @@ class IA_Gomoku:
 
 if __name__ == "__main__":
     plateau = Plateau()
-    print("Qui commence ? Tapez '1' pour vous ou '2' pour l'IA :")
-    premier = input()
+    premier = None
+    while premier not in ['1', '2']:
+        print("Qui commence ? Tapez '1' pour vous ou '2' pour l'IA :")
+        premier = input()
+        if premier not in ['1', '2']:
+            print("Entrée invalide. Veuillez taper '1' ou '2'.")
+
     joueur = 'X' if premier == '1' else 'O'
     ia = IA_Gomoku('X' if joueur == 'O' else 'O')
 
-    print("Jeu de Gomoku!")
+    print("Jeu de Gomoku")
     premier_coup_joueur = premier == '1'
     premier_coup_ia = premier == '2'
+    deuxieme_coup_restreint = premier == '1'
+    deuxieme_coup_ia = premier == '2'
     plateau.afficher()
 
     while not plateau.est_plein():
@@ -154,11 +161,13 @@ if __name__ == "__main__":
                         print("Vous devez jouer en H7 pour votre premier coup.")
                         continue
                     premier_coup_joueur = False
-                elif not premier_coup_joueur and (abs(x - 7) < 4 and abs(y - 7) < 4):
-                    print("Votre deuxième coup doit être à au moins 4 cases de H7.")
-                    continue
+                elif deuxieme_coup_restreint:
+                    if (abs(x - 7) < 4 and abs(y - 7) < 4):
+                        print("Votre deuxième coup doit être à au moins 4 cases de H7.")
+                        continue
+                    deuxieme_coup_restreint = False
                 if not plateau.jouer_coup(x, y, 'X'):
-                    print("Coup invalide. Essayez à nouveau.")
+                    print("Coup invalide ou déjà joué par l'IA. Essayez à nouveau.")
                     continue
             except:
                 print("Entrée invalide. Essayez à nouveau.")
@@ -175,9 +184,17 @@ if __name__ == "__main__":
             print("L'IA réfléchit...")
             debut = time.time()
             if premier_coup_ia:
-                plateau.jouer_coup(7, 7, 'X')
+                plateau.jouer_coup(7, 7, '0')
                 print("L'IA joue : H7")
                 premier_coup_ia = False
+            elif deuxieme_coup_ia:
+                if plateau.est_coup_valide(3, 7):
+                    plateau.jouer_coup(3, 7, '0')
+                    print("L'IA joue : D7")
+                elif plateau.est_coup_valide(11, 7):
+                    plateau.jouer_coup(11, 7, '0')
+                    print("L'IA joue : L7")
+                deuxieme_coup_ia = False
             else:
                 coup_ia = ia.trouver_meilleur_coup(plateau, profondeur=3)
                 fin = time.time()

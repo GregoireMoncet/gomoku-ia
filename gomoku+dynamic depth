@@ -1,9 +1,9 @@
 import numpy as np
 import time
 
-# Constantes pour la profondeur dynamique
+
 DYNAMIC_DEPTH = True
-MAX_DEPTH = 4  # Profondeur maximale par défaut
+MAX_DEPTH = 4
 
 class Plateau:
     def __init__(self):

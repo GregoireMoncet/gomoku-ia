@@ -1,0 +1,249 @@
+import numpy as np
+import time
+
+# Constantes pour la profondeur dynamique
+DYNAMIC_DEPTH = True
+MAX_DEPTH = 4  # Profondeur maximale par défaut
+
+class Plateau:
+    def __init__(self):
+        self.taille = 15
+        self.plateau = np.full((self.taille, self.taille), '.')
+
+    def afficher(self):
+        print("   " + "   ".join(map(str, range(self.taille))))
+        print("  +" + "---+" * self.taille)
+        for i, ligne in enumerate(self.plateau):
+            affichage_ligne = " | ".join(ligne)
+            print(f"{chr(65 + i)} | {affichage_ligne} |")
+            print("  +" + "---+" * self.taille)
+
+    def est_coup_valide(self, x, y):
+        return 0 <= x < self.taille and 0 <= y < self.taille and self.plateau[x, y] == '.'
+
+    def jouer_coup(self, x, y, joueur):
+        if self.est_coup_valide(x, y) or joueur == '.':
+            self.plateau[x, y] = joueur
+            return True
+        return False
+
+    def verifier_victoire(self, joueur):
+        def verifier_ligne(ligne):
+            return ''.join(ligne).find(joueur * 5) != -1
+
+        for i in range(self.taille):
+            if verifier_ligne(self.plateau[i, :]) or verifier_ligne(self.plateau[:, i]):
+                return True
+
+        for d in range(-self.taille + 1, self.taille):
+            if verifier_ligne(np.diagonal(self.plateau, d)) or verifier_ligne(np.diagonal(np.fliplr(self.plateau), d)):
+                return True
+
+        return False
+
+    def est_plein(self):
+        return not (self.plateau == '.').any()
+
+class IA_Gomoku:
+    def __init__(self, joueur):
+        self.joueur = joueur
+        self.adversaire = 'O' if joueur == 'X' else 'X'
+        self.noeuds_evalues = 0
+
+    def evaluer_plateau(self, plateau):
+        score = 0
+        for i in range(plateau.taille):
+            for ligne in [plateau.plateau[i, :], plateau.plateau[:, i], 
+                         np.diagonal(plateau.plateau, i), np.diagonal(np.fliplr(plateau.plateau), i)]:
+                chaine_ligne = ''.join(ligne)
+                if self.joueur * 5 in chaine_ligne:
+                    return 10000
+                if self.adversaire * 5 in chaine_ligne:
+                    return -10000
+                score += chaine_ligne.count(self.joueur * 4) * 1000
+                score += chaine_ligne.count(self.joueur * 3) * 100
+                score += chaine_ligne.count(self.joueur * 2) * 10
+                score -= chaine_ligne.count(self.adversaire * 4) * 1000
+                score -= chaine_ligne.count(self.adversaire * 3) * 100
+                score -= chaine_ligne.count(self.adversaire * 2) * 10
+
+                if self.adversaire * 4 in chaine_ligne:
+                    score -= 5000
+                if self.joueur * 4 in chaine_ligne:
+                    score += 5000
+        return score
+
+    def generer_coups(self, plateau):
+        coups = []
+        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+        for x in range(plateau.taille):
+            for y in range(plateau.taille):
+                if plateau.plateau[x, y] != '.':
+                    for dx, dy in directions:
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < plateau.taille and 0 <= ny < plateau.taille and plateau.plateau[nx, ny] == '.':
+                            if (nx, ny) not in coups:
+                                coups.append((nx, ny))
+        return coups
+
+    def ajuster_profondeur_dynamique(self, plateau, coup, profondeur_actuelle):
+
+        x, y = coup
+        plateau.jouer_coup(x, y, self.joueur)
+        score = self.evaluer_plateau(plateau)
+        plateau.jouer_coup(x, y, '.')
+        if abs(score) >= 2500 and DYNAMIC_DEPTH and profondeur_actuelle < MAX_DEPTH:
+            return MAX_DEPTH + 2
+        elif abs(score) < 2500 and DYNAMIC_DEPTH:
+            return MAX_DEPTH
+        return profondeur_actuelle 
+
+    def minimax(self, plateau, profondeur, maximiser, alpha, beta):
+        self.noeuds_evalues += 1
+        if plateau.verifier_victoire(self.joueur):
+            return 10000 - (3 - profondeur)
+        if plateau.verifier_victoire(self.adversaire):
+            return -10000 + (3 - profondeur)
+        if profondeur == 0 or plateau.est_plein():
+            return self.evaluer_plateau(plateau)
+
+        if maximiser:
+            max_eval = float('-inf')
+            for coup in self.generer_coups(plateau):
+                x, y = coup
+                plateau.jouer_coup(x, y, self.joueur)
+                eval = self.minimax(plateau, profondeur - 1, False, alpha, beta)
+                plateau.jouer_coup(x, y, '.')
+                max_eval = max(max_eval, eval)
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break
+            return max_eval
+        else:
+            min_eval = float('inf')
+            for coup in self.generer_coups(plateau):
+                x, y = coup
+                plateau.jouer_coup(x, y, self.adversaire)
+                eval = self.minimax(plateau, profondeur - 1, True, alpha, beta)
+                plateau.jouer_coup(x, y, '.')
+                min_eval = min(min_eval, eval)
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break
+            return min_eval
+
+    def trouver_meilleur_coup(self, plateau, profondeur):
+        meilleur_coup = None
+        meilleure_valeur = float('-inf')
+
+        for coup in self.generer_coups(plateau):
+            x, y = coup
+
+            # Ajuster dynamiquement la profondeur
+            profondeur_dynamique = self.ajuster_profondeur_dynamique(plateau, coup, profondeur)
+
+            plateau.jouer_coup(x, y, self.joueur)
+            valeur_coup = self.minimax(plateau, profondeur_dynamique - 1, False, float('-inf'), float('inf'))
+            plateau.jouer_coup(x, y, '.')
+
+            if valeur_coup > meilleure_valeur:
+                meilleure_valeur = valeur_coup
+                meilleur_coup = (x, y)
+
+        return meilleur_coup
+
+if __name__ == "__main__":
+    plateau = Plateau()
+    premier = None
+    while premier not in ['1', '2']:
+        print("Qui commence ? Tapez '1' pour vous ou '2' pour l'IA :")
+        premier = input()
+        if premier not in ['1', '2']:
+            print("Entrée invalide. Veuillez taper '1' ou '2'.")
+
+    joueur = 'X' if premier == '1' else 'O'
+    ia = IA_Gomoku('X' if joueur == 'O' else 'O')
+
+    print("Jeu de Gomoku")
+    premier_coup_joueur = premier == '1'
+    premier_coup_ia = premier == '2'
+    deuxieme_coup_restreint = premier == '1'
+    deuxieme_coup_ia = premier == '2'
+    plateau.afficher()
+
+    profondeur_base = 3  # Profondeur initiale de l'IA
+    profondeur_max = 5   # Profondeur maximale ajustée dynamiquement
+
+    while not plateau.est_plein():
+        if joueur == 'X':
+            coup = input("Entrez votre coup : ").upper()
+            try:
+                x, y = ord(coup[0]) - 65, int(coup[1:])
+                if premier_coup_joueur:
+                    if (x, y) != (7, 7):
+                        print("Vous devez jouer en H7 pour votre premier coup.")
+                        continue
+                    premier_coup_joueur = False
+                elif deuxieme_coup_restreint:
+                    if abs(x - 7) < 4 and abs(y - 7) < 4:
+                        print("Votre deuxième coup doit être à au moins 4 cases de H7.")
+                        continue
+                    deuxieme_coup_restreint = False
+
+                if plateau.jouer_coup(x, y, joueur):
+                    plateau.afficher()
+                    if plateau.verifier_victoire(joueur):
+                        print("Félicitations, vous avez gagné !")
+                        break
+                    joueur = 'O'
+                else:
+                    print("Coup invalide. Réessayez.")
+            except (IndexError, ValueError):
+                print("Format invalide. Utilisez le format lettre+numéro (ex: H7).")
+        else:
+            print("L'IA réfléchit...")
+            if premier_coup_ia:
+                coup_ia = (7, 7)
+                premier_coup_ia = False
+            elif deuxieme_coup_ia:
+                for x, y in [(3, 3), (3, 11), (11, 3), (11, 11)]:
+                    if plateau.est_coup_valide(x, y):
+                        coup_ia = (x, y)
+                        deuxieme_coup_ia = False
+                        break
+            else:
+                coups_possibles = ia.generer_coups(plateau)
+                profondeur_actuelle = profondeur_base
+
+                # Ajustement dynamique de la profondeur pour chaque coup
+                meilleur_coup = None
+                meilleure_valeur = float('-inf')
+                for coup in coups_possibles:
+                    profondeur_actuelle = ia.ajuster_profondeur_dynamique(plateau, coup, profondeur_base)
+                    plateau.jouer_coup(*coup, ia.joueur)
+                    valeur_coup = ia.minimax(plateau, profondeur_actuelle, False, float('-inf'), float('inf'))
+                    plateau.jouer_coup(*coup, '.')  # Annuler le coup
+                    if valeur_coup > meilleure_valeur:
+                        meilleure_valeur = valeur_coup
+                        meilleur_coup = coup
+                coup_ia = meilleur_coup
+
+            plateau.jouer_coup(*coup_ia, ia.joueur)
+            print(f"L'IA joue : {chr(coup_ia[0] + 65)}{coup_ia[1]}")
+            plateau.afficher()
+
+            if plateau.verifier_victoire(ia.joueur):
+                print("L'IA a gagné. Bonne chance la prochaine fois !")
+                break
+
+            joueur = 'X'
+
+    if plateau.est_plein():
+        print("Match nul ! Merci d'avoir joué.")
+
+
+
+
+
+
+                    

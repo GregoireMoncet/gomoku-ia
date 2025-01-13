@@ -3,8 +3,7 @@ import time
 
 
 DYNAMIC_DEPTH = True
-MAX_DEPTH = 4
-
+MAX_DEPTH = 4 
 class Plateau:
     def __init__(self):
         self.taille = 15
@@ -74,7 +73,7 @@ class IA_Gomoku:
         return score
 
     def generer_coups(self, plateau):
-        coups = []
+        coups = set()
         directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         for x in range(plateau.taille):
             for y in range(plateau.taille):
@@ -82,9 +81,8 @@ class IA_Gomoku:
                     for dx, dy in directions:
                         nx, ny = x + dx, y + dy
                         if 0 <= nx < plateau.taille and 0 <= ny < plateau.taille and plateau.plateau[nx, ny] == '.':
-                            if (nx, ny) not in coups:
-                                coups.append((nx, ny))
-        return coups
+                            coups.add((nx, ny))
+        return list(coups)
 
     def ajuster_profondeur_dynamique(self, plateau, coup, profondeur_actuelle):
 
@@ -135,20 +133,16 @@ class IA_Gomoku:
     def trouver_meilleur_coup(self, plateau, profondeur):
         meilleur_coup = None
         meilleure_valeur = float('-inf')
+        coups_trie = self.generer_coups(plateau)
 
-        for coup in self.generer_coups(plateau):
+        for coup in coups_trie:
             x, y = coup
-
-            # Ajuster dynamiquement la profondeur
-            profondeur_dynamique = self.ajuster_profondeur_dynamique(plateau, coup, profondeur)
-
             plateau.jouer_coup(x, y, self.joueur)
-            valeur_coup = self.minimax(plateau, profondeur_dynamique - 1, False, float('-inf'), float('inf'))
-            plateau.jouer_coup(x, y, '.')
-
+            valeur_coup = self.minimax(plateau, profondeur - 1, False, float('-inf'), float('inf'))
+            plateau.jouer_coup(x, y, '.')  # Annuler le coup
             if valeur_coup > meilleure_valeur:
                 meilleure_valeur = valeur_coup
-                meilleur_coup = (x, y)
+                meilleur_coup = coup
 
         return meilleur_coup
 

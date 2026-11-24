@@ -11,21 +11,20 @@ L'IA choisit son coup avec l'algorithme Minimax et l'élagage alpha-bêta. Une f
 Le dépôt contient trois variantes du programme :
 
 - `PROJET DIA GOMOKU A3`
-- - `gomoku+dynamic depth` (profondeur de recherche dynamique)
-  - - `IA BIEN RAPIDE.py`
-   
-    - Chaque fichier définit une classe `Plateau` (affichage, coups valides, détection de victoire) et une classe `IA_Gomoku` (évaluation, génération des coups, minimax).
-   
-    - ## Lancer le programme
-   
-    - Python 3 et NumPy sont nécessaires.
-   
-    - ```bash
-      pip install numpy
-      python "IA BIEN RAPIDE.py"
-      ```
+- `gomoku+dynamic depth` (profondeur de recherche dynamique)
+- `IA BIEN RAPIDE.py`
 
-      ## Notions mises en pratique
+Chaque fichier définit une classe `Plateau` (affichage, coups valides, détection de victoire) et une classe `IA_Gomoku` (évaluation, génération des coups, minimax).
 
-      Programmation orientée objet, algorithme Minimax, élagage alpha-bêta, fonction d'évaluation, NumPy, travail en équipe.
-      
+## Lancer le programme
+
+Python 3 et NumPy sont nécessaires.
+
+```bash
+pip install numpy
+python "IA BIEN RAPIDE.py"
+```
+
+## Notions mises en pratique
+
+Programmation orientée objet, algorithme Minimax, élagage alpha-bêta, fonction d'évaluation, NumPy, travail en équipe.
